@@ -7,6 +7,7 @@
     using Azure.Messaging.EventHubs.Consumer;
     using Azure.Messaging.EventHubs.Processor;
     using Azure.Storage.Blobs;
+    using Newtonsoft.Json;
 
     /// <summary>
     /// Consumer Class
@@ -26,14 +27,13 @@
 
         public async Task ConsumerStart()
         {
-            string consumerGroup = EventHubConsumerClient.DefaultConsumerGroupName;
+            string consumerGroup = "test";
 
             BlobServiceClient blobServiceClient = new BlobServiceClient(BlobStorageConnectionString);
-            // string containerName = "Blobs" + Guid.NewGuid().ToString();
-            string containerName = "default";
+            string containerName = "blob" + Guid.NewGuid().ToString();
             BlobContainerClient storageClient = blobServiceClient.CreateBlobContainer(containerName);
 
-            EventProcessorClient processor = new EventProcessorClient(storageClient, consumerGroup, EventHubConnectionString);
+            EventProcessorClient processor = new EventProcessorClient(storageClient, consumerGroup, EventHubConnectionString, EventHubName);
 
             processor.ProcessEventAsync += ProcessEventHandler;
             processor.ProcessErrorAsync += ProcessErrorHandler;
@@ -50,7 +50,11 @@
         public async Task ProcessEventHandler(ProcessEventArgs eventArgs)
         {
             string eventBody = Encoding.UTF8.GetString(eventArgs.Data.Body.ToArray());
-            Console.WriteLine($"Received Event: {eventBody}");
+            EventObj @event = JsonConvert.DeserializeObject<EventObj>(eventBody);
+            Console.WriteLine("Received Event:");
+            Console.WriteLine($"\t Event Name: {@event.EventName}");
+            Console.WriteLine($"\t Event Number: {@event.EventNumber}");
+            Console.WriteLine($"\t Event Id: {@event.EventId}");
 
             await eventArgs.UpdateCheckpointAsync(eventArgs.CancellationToken);
         }

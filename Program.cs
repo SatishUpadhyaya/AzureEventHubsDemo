@@ -52,6 +52,7 @@
 
             tester.StartProducer();
 
+            Console.WriteLine("Press 'ENTER' to continue ...");
             Console.ReadLine();
 
             await tester.StartConsumer();

@@ -48,7 +48,7 @@
                 "First", "Second", "Third",
             };
 
-            int counter = 0;
+            int counter = 1;
             foreach (string e in events)
             {
                 EventObj @event = new EventObj()
