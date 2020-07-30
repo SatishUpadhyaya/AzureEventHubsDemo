@@ -5,6 +5,7 @@
     using System.Text;
     using Azure.Messaging.EventHubs;
     using Azure.Messaging.EventHubs.Producer;
+    using Humanizer;
     using Newtonsoft.Json;
 
     /// <summary>
@@ -43,10 +44,12 @@
         {
             List<string> eventData = new List<string>();
 
-            List<string> events = new List<string>()
+            List<string> events = new List<string>();
+            int numberOfEventsToAdd = 5;
+            for(int i = 1; i < numberOfEventsToAdd + 1; i++)
             {
-                "First", "Second", "Third",
-            };
+                events.Add(i.ToOrdinalWords());
+            }
 
             int counter = 1;
             foreach (string e in events)
@@ -56,6 +59,7 @@
                     EventName = e + " Event",
                     EventNumber = counter,
                     EventId = Guid.NewGuid().ToString(),
+                    InsertionTime = DateTime.UtcNow,
                 };
                 string eventStr = JsonConvert.SerializeObject(@event);
                 eventData.Add(eventStr);

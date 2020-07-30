@@ -1,10 +1,6 @@
 ﻿namespace EventHubsDemo
 {
     using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// Event Obj class
@@ -20,5 +16,7 @@
         public int EventNumber { get; set; }
 
         public string EventId { get; set; }
+
+        public DateTime InsertionTime { get; set; }
     }
 }
