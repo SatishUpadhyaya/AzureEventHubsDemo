@@ -26,13 +26,13 @@
 
         public string EventHubConnectionString { get; set; }
 
-        public string BlobStorageConnectionString { get; set; }
+        public string StorageConnectionString { get; set; }
 
         public async Task ConsumerStart()
         {
             string consumerGroup = "test";
 
-            BlobServiceClient blobServiceClient = new BlobServiceClient(BlobStorageConnectionString);
+            BlobServiceClient blobServiceClient = new BlobServiceClient(StorageConnectionString);
             string containerName = "blob-" + Guid.NewGuid().ToString();
             BlobContainerClient storageClient = blobServiceClient.CreateBlobContainer(containerName);
 
@@ -84,8 +84,7 @@
                     { "EventId", new EntityProperty(@event.EventId) },
                 };
 
-                string connectionString = ConfigurationManager.AppSettings["StorageTableConnectionString"];
-                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(StorageConnectionString);
                 CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
 
                 string eventNameNoSpace = @event.EventName.Replace(" ", String.Empty);

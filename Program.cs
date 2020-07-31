@@ -35,7 +35,7 @@
             {
                 EventHubName = eventHubName,
                 EventHubConnectionString = eventHubConnectionString,
-                BlobStorageConnectionString = storageConnectionString,
+                StorageConnectionString = storageConnectionString,
             };
             await consumer.ConsumerStart();
         }
