@@ -2,15 +2,11 @@
 {
     using System;
     using System.Text;
-    using System.Threading.Tasks;
-    using Azure.Messaging.EventHubs;
-    using Azure.Messaging.EventHubs.Processor;
     using Microsoft.WindowsAzure.Storage.Table;
-    using Azure.Storage.Blobs;
     using Newtonsoft.Json;
     using System.Collections.Generic;
     using Microsoft.WindowsAzure.Storage;
-    using System.Configuration;
+    using Microsoft.ServiceBus.Messaging;
 
     /// <summary>
     /// Consumer Class
@@ -28,47 +24,36 @@
 
         public string StorageConnectionString { get; set; }
 
-        public async Task ConsumerStart()
+        public void ConsumerStart()
         {
-            string consumerGroup = "test";
+            string consumerGroupName = "test";
 
-            BlobServiceClient blobServiceClient = new BlobServiceClient(StorageConnectionString);
-            string containerName = "blob-" + Guid.NewGuid().ToString();
-            BlobContainerClient storageClient = blobServiceClient.CreateBlobContainer(containerName);
+            EventHubClient client = EventHubClient.CreateFromConnectionString(EventHubConnectionString, EventHubName);
+            EventHubConsumerGroup consumerGroup = client.GetConsumerGroup(consumerGroupName);
+            EventHubReceiver receiver = consumerGroup.CreateReceiver(client.GetRuntimeInformation().PartitionIds[0]);
 
-            EventProcessorClient processor = new EventProcessorClient(storageClient, consumerGroup, EventHubConnectionString, EventHubName);
-
-            processor.ProcessEventAsync += ProcessEventHandler;
-            processor.ProcessErrorAsync += ProcessErrorHandler;
-
-            Console.WriteLine("Started to process event/error ...");
-
-            await processor.StartProcessingAsync();
-
-            await Task.Delay(TimeSpan.FromSeconds(10));
-
-            await processor.StopProcessingAsync();
-        }
-
-        public async Task ProcessEventHandler(ProcessEventArgs eventArgs)
-        {
-            try
+            while (true)
             {
-                string eventBody = Encoding.UTF8.GetString(eventArgs.Data.Body.ToArray());
-                EventObj @event = JsonConvert.DeserializeObject<EventObj>(eventBody);
-                Console.WriteLine("Received Event:");
-                Console.WriteLine($"\t Event Name: {@event.EventName}");
-                Console.WriteLine($"\t Event Number: {@event.EventNumber}");
-                Console.WriteLine($"\t Event Id: {@event.EventId}");
-                Console.WriteLine($"\t Event Insertion Time: {@event.InsertionTime}");
+                Microsoft.ServiceBus.Messaging.EventData eventData = receiver.ReceiveAsync().Result;
 
-                InsertEntityToAzureTable(@event);
+                try
+                {
+                    string data = Encoding.UTF8.GetString(eventData.GetBytes());
+                    Console.WriteLine($"Message received: {data}");
 
-                await eventArgs.UpdateCheckpointAsync(eventArgs.CancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception occured while processing event: {ex}");
+                    EventObj @event = JsonConvert.DeserializeObject<EventObj>(data);
+                    Console.WriteLine("Received Event:");
+                    Console.WriteLine($"\t Event Name: {@event.EventName}");
+                    Console.WriteLine($"\t Event Number: {@event.EventNumber}");
+                    Console.WriteLine($"\t Event Id: {@event.EventId}");
+                    Console.WriteLine($"\t Event Insertion Time: {@event.InsertionTime}");
+
+                    InsertEntityToAzureTable(@event);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Exception occured while processing event: {ex}");
+                }
             }
         }
 
@@ -102,13 +87,6 @@
             {
                 Console.WriteLine($"Exception occured while creating a table entity: {ex}");
             }
-        }
-
-        public Task ProcessErrorHandler(ProcessErrorEventArgs errorArgs)
-        {
-            Console.WriteLine($"Partition '{errorArgs.PartitionId}': an unhandled exception was encountered. This was not expected to happen.");
-            Console.WriteLine($"Exception: {errorArgs.Exception.Message}");
-            return Task.CompletedTask;
         }
     }
 }

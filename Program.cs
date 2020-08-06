@@ -2,7 +2,6 @@
 {
     using System;
     using System.Configuration;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// Tester class
@@ -29,7 +28,7 @@
             producer.ProducerStart();
         }
 
-        public async Task StartConsumer()
+        public void StartConsumer()
         {
             Consumer consumer = new Consumer()
             {
@@ -37,7 +36,7 @@
                 EventHubConnectionString = eventHubConnectionString,
                 StorageConnectionString = storageConnectionString,
             };
-            await consumer.ConsumerStart();
+            consumer.ConsumerStart();
         }
     }
 
@@ -46,7 +45,7 @@
     /// </summary>
     public class Program
     {
-        public static async Task Main()
+        public static void Main()
         {
             Tester tester = new Tester();
 
@@ -55,7 +54,7 @@
             Console.WriteLine("Press 'ENTER' to continue ...");
             Console.ReadLine();
 
-            await tester.StartConsumer();
+            tester.StartConsumer();
 
             Console.WriteLine("Done!");
             Console.ReadLine();
