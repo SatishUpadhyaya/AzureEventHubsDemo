@@ -1,16 +1,7 @@
 ﻿namespace EventHubsDemo
 {
     using System;
-    using System.Text;
-    using System.Threading.Tasks;
-    using Azure.Messaging.EventHubs;
-    using Azure.Messaging.EventHubs.Processor;
-    using Microsoft.WindowsAzure.Storage.Table;
-    using Azure.Storage.Blobs;
-    using Newtonsoft.Json;
-    using System.Collections.Generic;
-    using Microsoft.WindowsAzure.Storage;
-    using System.Configuration;
+    using Microsoft.ServiceBus.Messaging;
 
     /// <summary>
     /// Consumer Class
@@ -28,87 +19,29 @@
 
         public string StorageConnectionString { get; set; }
 
-        public async Task ConsumerStart()
+        public static string StorageConnectionStringForEventProcessor;
+
+        public void ConsumerStart()
         {
-            string consumerGroup = "test";
+            StorageConnectionStringForEventProcessor = StorageConnectionString;
+            string consumerGroupName = "test";
+            string eventProcessorHostName = Guid.NewGuid().ToString();
 
-            BlobServiceClient blobServiceClient = new BlobServiceClient(StorageConnectionString);
-            string containerName = "blob-" + Guid.NewGuid().ToString();
-            BlobContainerClient storageClient = blobServiceClient.CreateBlobContainer(containerName);
+            EventProcessorHost eventProcessorHost = new EventProcessorHost(
+                eventProcessorHostName,
+                EventHubName,
+                consumerGroupName,
+                EventHubConnectionString,
+                StorageConnectionString);
+            Console.WriteLine("EventProcessor is starting ...");
 
-            EventProcessorClient processor = new EventProcessorClient(storageClient, consumerGroup, EventHubConnectionString, EventHubName);
+            EventProcessorOptions eventProcessorOptions = new EventProcessorOptions();
+            eventProcessorOptions.ExceptionReceived += (obj, ex) => { Console.WriteLine($"Exception occured while receiving incident with exception: {ex.Exception.ToString()}"); };
+            eventProcessorHost.RegisterEventProcessorAsync<EventObjEventProcessor>(eventProcessorOptions).Wait();
 
-            processor.ProcessEventAsync += ProcessEventHandler;
-            processor.ProcessErrorAsync += ProcessErrorHandler;
-
-            Console.WriteLine("Started to process event/error ...");
-
-            await processor.StartProcessingAsync();
-
-            await Task.Delay(TimeSpan.FromSeconds(10));
-
-            await processor.StopProcessingAsync();
-        }
-
-        public async Task ProcessEventHandler(ProcessEventArgs eventArgs)
-        {
-            try
-            {
-                string eventBody = Encoding.UTF8.GetString(eventArgs.Data.Body.ToArray());
-                EventObj @event = JsonConvert.DeserializeObject<EventObj>(eventBody);
-                Console.WriteLine("Received Event:");
-                Console.WriteLine($"\t Event Name: {@event.EventName}");
-                Console.WriteLine($"\t Event Number: {@event.EventNumber}");
-                Console.WriteLine($"\t Event Id: {@event.EventId}");
-                Console.WriteLine($"\t Event Insertion Time: {@event.InsertionTime}");
-
-                InsertEntityToAzureTable(@event);
-
-                await eventArgs.UpdateCheckpointAsync(eventArgs.CancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception occured while processing event: {ex}");
-            }
-        }
-
-        public void InsertEntityToAzureTable(EventObj @event)
-        {
-            Console.WriteLine("Inserting entities to azure table ...");
-            try
-            {
-                Dictionary<string, EntityProperty> entities = new Dictionary<string, EntityProperty>()
-                {
-                    { "EventName", new EntityProperty(@event.EventName) },
-                    { "EventNumber", new EntityProperty(@event.EventNumber) },
-                    { "EventId", new EntityProperty(@event.EventId) },
-                };
-
-                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(StorageConnectionString);
-                CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
-
-                string eventNameNoSpace = @event.EventName.Replace(" ", String.Empty);
-                DynamicTableEntity entity = new DynamicTableEntity(
-                    eventNameNoSpace,
-                    @event.EventId,
-                    "*",
-                    entities);
-
-                CloudTable cloudTable = tableClient.GetTableReference("newtable");
-                cloudTable.CreateIfNotExists();
-                cloudTable.Execute(TableOperation.InsertOrReplace(entity));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception occured while creating a table entity: {ex}");
-            }
-        }
-
-        public Task ProcessErrorHandler(ProcessErrorEventArgs errorArgs)
-        {
-            Console.WriteLine($"Partition '{errorArgs.PartitionId}': an unhandled exception was encountered. This was not expected to happen.");
-            Console.WriteLine($"Exception: {errorArgs.Exception.Message}");
-            return Task.CompletedTask;
+            Console.WriteLine("Press 'ENTER' to continue ...");
+            Console.ReadLine();
+            eventProcessorHost.UnregisterEventProcessorAsync().Wait();
         }
     }
 }
