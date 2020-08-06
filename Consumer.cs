@@ -38,17 +38,24 @@
 
                 try
                 {
-                    string data = Encoding.UTF8.GetString(eventData.GetBytes());
-                    Console.WriteLine($"Message received: {data}");
+                    if (eventData != null)
+                    {
+                        string data = Encoding.UTF8.GetString(eventData.GetBytes());
+                        Console.WriteLine($"Message received: {data}");
 
-                    EventObj @event = JsonConvert.DeserializeObject<EventObj>(data);
-                    Console.WriteLine("Received Event:");
-                    Console.WriteLine($"\t Event Name: {@event.EventName}");
-                    Console.WriteLine($"\t Event Number: {@event.EventNumber}");
-                    Console.WriteLine($"\t Event Id: {@event.EventId}");
-                    Console.WriteLine($"\t Event Insertion Time: {@event.InsertionTime}");
+                        EventObj @event = JsonConvert.DeserializeObject<EventObj>(data);
+                        Console.WriteLine("Received Event:");
+                        Console.WriteLine($"\t Event Name: {@event.EventName}");
+                        Console.WriteLine($"\t Event Number: {@event.EventNumber}");
+                        Console.WriteLine($"\t Event Id: {@event.EventId}");
+                        Console.WriteLine($"\t Event Insertion Time: {@event.InsertionTime}");
 
-                    InsertEntityToAzureTable(@event);
+                        InsertEntityToAzureTable(@event);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Event Data is null, retrying ...");
+                    }
                 }
                 catch (Exception ex)
                 {
